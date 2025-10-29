@@ -1,0 +1,10 @@
+name: ssh-baseline
+title: InSpec Profile for Secure SSH Baseline
+maintainer: Ravi Jha
+copyright: Alyssum Global Services
+copyright_email: ravi.jha@alyssum.global
+license: Apache-2.0
+summary: Validates SSH server configuration against security best practices.
+version: 1.0.0
+supports:
+  - os-family: unix,linux
