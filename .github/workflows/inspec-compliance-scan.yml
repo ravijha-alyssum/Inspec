@@ -17,6 +17,8 @@ jobs:
         run: |
           curl https://omnitruck.chef.io/install.sh | sudo bash -s -- -P inspec
           inspec version
+        env:
+          CHEF_LICENSE: accept-no-persist
       
       # Step 3: Run the InSpec scan on the local runner
       - name: Run InSpec Scan
@@ -25,6 +27,8 @@ jobs:
             --target local:// \
             --reporter cli json:inspec-report.json
         continue-on-error: true
+        env:
+          CHEF_LICENSE: accept-no-persist
       
       # Step 4: Store the scan report as a downloadable artifact
       # This is for archival and manual inspection. It runs even if other steps fail.
