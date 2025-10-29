@@ -12,45 +12,41 @@ jobs:
       - name: Checkout InSpec Profile from Repository
         uses: actions/checkout@v4
       
-      # Step 2: Run the InSpec scan on the local runner
+      # Step 2: Install Chef InSpec
+      - name: Install Chef InSpec
+        run: |
+          curl https://omnitruck.chef.io/install.sh | sudo bash -s -- -P inspec
+          inspec version
+      
+      # Step 3: Run the InSpec scan on the local runner
       - name: Run InSpec Scan
-        uses: chef/inspec@v1
-        with:
-          profile: './ssh-baseline'
-          target: 'local://'
-          # Use the full JSON reporter for rich data
-          reporter: 'cli json'
-        
-      # Step 3: Store the scan report as a downloadable artifact
+        run: |
+          inspec exec './ssh-baseline' \
+            --target local:// \
+            --reporter cli json:inspec-report.json
+        continue-on-error: true
+      
+      # Step 4: Store the scan report as a downloadable artifact
       # This is for archival and manual inspection. It runs even if other steps fail.
       - name: Upload InSpec Report as Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: inspec-scan-report
-          # The default output file from the action is inspec-report.json
           path: inspec-report.json
       
-      # Step 4: Push the scan results to DefectDojo
-      # This step will only run if the InSpec scan was successful
+      # Step 5: Push the scan results to DefectDojo
+      # Using ivanamat/defectdojo-import-scan action
       - name: Upload Results to DefectDojo
-        uses: defectdojo/defectdojo-action@v1
+        if: always()
+        uses: ivanamat/defectdojo-import-scan@v1
         with:
-          # --- Connection Details (from Secrets) ---
+          token: ${{ secrets.DEFECTDOJO_API_KEY }}
           defectdojo_url: ${{ secrets.DEFECTDOJO_URL }}
-          defectdojo_api_key: ${{ secrets.DEFECTDOJO_API_KEY }}
-          
-          # --- Scan Target Details (customize these) ---
-          product_name: 'Infrastructure Scans'
-          engagement_name: 'CI SSH Scans'
-          
-          # --- Scan File Details ---
-          scan_type: 'Chef InSpec Scan'
-          file_path: 'inspec-report.json'
-          
-          # --- Optional: Advanced Settings ---
-          # This will automatically create the Product and Engagement if they don't exist
-          auto_create_context: true
-          
-          # This will automatically close findings in DefectDojo that are no longer found in this scan
-          close_old_findings: true
+          file: inspec-report.json
+          scan_type: 'Chef Inspec Scan'
+          engagement: ${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}
+          # Optional: Set to true to create the engagement if it doesn't exist
+          # auto_create_context: true
+          # Optional: Close old findings
+          # close_old_findings: true
