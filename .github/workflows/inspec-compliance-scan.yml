@@ -1,56 +1,37 @@
 name: 'Chef InSpec Compliance Scan'
 
 on:
+  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
-  inspec-scan-and-upload:
+  inspec-scan:
     runs-on: ubuntu-latest
     
     steps:
       # Step 1: Check out the repository code (your InSpec profile)
       - name: Checkout InSpec Profile from Repository
         uses: actions/checkout@v4
-      
-      # Step 2: Install Chef InSpec
-      - name: Install Chef InSpec
-        run: |
-          curl https://omnitruck.chef.io/install.sh | sudo bash -s -- -P inspec
-          inspec version
-        env:
-          CHEF_LICENSE: accept-no-persist
-      
-      # Step 3: Run the InSpec scan on the local runner
+
+      # Step 2: Run the InSpec scan on the local runner
       - name: Run InSpec Scan
-        run: |
-          inspec exec './ssh-baseline' \
-            --target local:// \
-            --reporter cli json:inspec-report.json
-        continue-on-error: true
-        env:
-          CHEF_LICENSE: accept-no-persist
-      
-      # Step 4: Store the scan report as a downloadable artifact
-      # This is for archival and manual inspection. It runs even if other steps fail.
+        uses: chef/action-inspec@v1
+        with:
+          profile: './ssh-baseline'
+          target: 'local://'
+          # Use the full JSON reporter for rich data, and CLI for easy viewing in logs
+          reporter: 'cli json' 
+          
+      # Step 3: Store the scan report as a downloadable artifact
+      # This is for archival and manual inspection. It runs even if the InSpec scan fails.
       - name: Upload InSpec Report as Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: inspec-scan-report
+          # The default output file from the action is inspec-report.json
           path: inspec-report.json
-      
-      # Step 5: Push the scan results to DefectDojo
-      # Using ivanamat/defectdojo-import-scan action
-      - name: Upload Results to DefectDojo
-        if: always()
-        uses: ivanamat/defectdojo-import-scan@v1
-        with:
-          token: ${{ secrets.DEFECTDOJO_API_KEY }}
-          defectdojo_url: ${{ secrets.DEFECTDOJO_URL }}
-          file: inspec-report.json
-          scan_type: 'Chef Inspec Scan'
-          engagement: ${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}
-          # Optional: Set to true to create the engagement if it doesn't exist
-          # auto_create_context: true
-          # Optional: Close old findings
-          # close_old_findings: true
+
+# --- REMOVED SECTION ---
+# The entire "Upload Results to DefectDojo" step has been removed.
+# You also no longer need the DEFECTDOJO_URL and DEFECTDOJO_API_KEY secrets.
