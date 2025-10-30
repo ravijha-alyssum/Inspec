@@ -7,4 +7,6 @@ license: Apache-2.0
 summary: Validates SSH server configuration against security best practices.
 version: 1.0.0
 supports:
-  - os-family: unix,linux
+  - platform-family: unix
+  - platform-family: linux
+  - platform-name: ubuntu
