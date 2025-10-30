@@ -19,11 +19,12 @@ jobs:
       
       # Step 3: Run the InSpec scan on the local runner
       - name: Run InSpec Scan
+        env:
+          CHEF_LICENSE: accept
         run: |
           inspec exec ./ssh-baseline \
             --target local:// \
-            --reporter cli json:inspec-report.json \
-            --chef-license accept
+            --reporter cli json:inspec-report.json
         continue-on-error: true
           
       # Step 4: Store the scan report as a downloadable artifact
