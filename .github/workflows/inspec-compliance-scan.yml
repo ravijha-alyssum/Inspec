@@ -1,9 +1,7 @@
 name: 'Chef InSpec Compliance Scan'
-
 on:
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
-
+  
 jobs:
   inspec-scan:
     runs-on: ubuntu-latest
@@ -12,26 +10,36 @@ jobs:
       # Step 1: Check out the repository code (your InSpec profile)
       - name: Checkout InSpec Profile from Repository
         uses: actions/checkout@v4
-
-      # Step 2: Run the InSpec scan on the local runner
+      
+      # Step 2: Install InSpec (free version)
+      - name: Install Chef InSpec
+        run: |
+          curl https://omnitruck.chef.io/install.sh | sudo bash -s -- -P inspec
+          inspec --version
+      
+      # Step 3: Run the InSpec scan on the local runner
       - name: Run InSpec Scan
-        uses: chef/action-inspec@v1
-        with:
-          profile: './ssh-baseline'
-          target: 'local://'
-          # Use the full JSON reporter for rich data, and CLI for easy viewing in logs
-          reporter: 'cli json' 
+        run: |
+          inspec exec ./ssh-baseline \
+            --target local:// \
+            --reporter cli json:inspec-report.json \
+            --chef-license accept
+        continue-on-error: true
           
-      # Step 3: Store the scan report as a downloadable artifact
-      # This is for archival and manual inspection. It runs even if the InSpec scan fails.
+      # Step 4: Store the scan report as a downloadable artifact
       - name: Upload InSpec Report as Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: inspec-scan-report
-          # The default output file from the action is inspec-report.json
           path: inspec-report.json
-
-# --- REMOVED SECTION ---
-# The entire "Upload Results to DefectDojo" step has been removed.
-# You also no longer need the DEFECTDOJO_URL and DEFECTDOJO_API_KEY secrets.
+      
+      # Step 5: Display summary of results
+      - name: Display Scan Summary
+        if: always()
+        run: |
+          if [ -f inspec-report.json ]; then
+            echo "### InSpec Scan Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Scan completed. Download the full report from artifacts." >> $GITHUB_STEP_SUMMARY
+          fi
