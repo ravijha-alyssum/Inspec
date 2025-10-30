@@ -32,13 +32,27 @@ jobs:
           inspec exec ./ssh-baseline \
             --target local:// \
             --reporter cli json:inspec-report.json
+        # This ensures that subsequent steps run even if the scan finds failures
         continue-on-error: true
+      
+      # ===================================================================
+      # NEW STEP: Format the JSON report to be human-readable
+      # ===================================================================
+      - name: Pretty-Print JSON Report
+        if: always() # Run this step even if the scan failed
+        run: |
+          # Use jq to read the file and output an indented version, then save it over the original
+          # The '.' command in jq means "output the entire JSON object"
+          jq . inspec-report.json > inspec-report-pretty.json
+          mv inspec-report-pretty.json inspec-report.json
+          echo "JSON report has been formatted."
           
       - name: Upload InSpec Report as Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: inspec-scan-report
+          # The path remains the same, as we've overwritten the original file
           path: inspec-report.json
       
       - name: Display Scan Summary
@@ -47,5 +61,5 @@ jobs:
           if [ -f inspec-report.json ]; then
             echo "### InSpec Scan Results" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Scan completed. Download the full report from artifacts." >> $GITHUB_STEP_SUMMARY
+            echo "Scan completed. Download the formatted report from artifacts." >> $GITHUB_STEP_SUMMARY
           fi
