@@ -10,16 +10,28 @@ jobs:
       - name: Checkout InSpec Profile from Repository
         uses: actions/checkout@v4
       
-      - name: Run InSpec Scan with Docker
+      - name: Install Chef Habitat
+        run: |
+          curl https://raw.githubusercontent.com/habitat-sh/habitat/main/components/hab/install.sh | sudo bash
+        env:
+          HAB_LICENSE: accept-no-persist
+          
+      - name: Accept Habitat License
+        run: |
+          echo "yes" | sudo hab license accept
+          
+      - name: Install Chef InSpec
+        run: |
+          sudo hab pkg install chef/inspec --channel stable --binlink --force
+          inspec --version
+      
+      - name: Run InSpec Scan
         env:
           CHEF_LICENSE: accept-silent
         run: |
-          docker run --rm \
-            -v $(pwd):/share \
-            -e CHEF_LICENSE=accept-silent \
-            chef/inspec:latest exec /share/ssh-baseline \
+          inspec exec ./ssh-baseline \
             --target local:// \
-            --reporter cli json:/share/inspec-report.json
+            --reporter cli json:inspec-report.json
         continue-on-error: true
           
       - name: Upload InSpec Report as Artifact
