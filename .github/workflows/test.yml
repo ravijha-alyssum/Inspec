@@ -52,15 +52,14 @@ jobs:
             inspec-report.log
       
       # ===================================================================
-      # MODIFIED STEP: This now attempts to upload the .log file
-      # This is expected to fail with a parsing error from DefectDojo.
+      # REVERTED STEP: This now correctly uploads the required .json file.
       # ===================================================================
       - name: Upload to DefectDojo
         if: always()
         run: |
           curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
-            -F "file=@inspec-report.log;type=text/plain" \
+            -F "file=@inspec-report.json;type=application/json" \
             -F "scan_type=Chef Inspect Log" \
             -F "engagement_name=ssh-baseline-ci" \
             -F "product_name=MyProduct" \
