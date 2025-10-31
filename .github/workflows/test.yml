@@ -35,12 +35,7 @@ jobs:
             --no-distinct-exit | tee inspec-report.log
         continue-on-error: true
       
-      - name: Pretty-Print JSON Report
-        if: always()
-        run: |
-          jq . inspec-report.json > inspec-report-pretty.json
-          mv inspec-report-pretty.json inspec-report.json
-          echo "JSON report has been formatted."
+      # --- The "Pretty-Print JSON Report" step has been removed ---
           
       - name: Upload InSpec Reports as Artifacts
         if: always()
@@ -51,9 +46,6 @@ jobs:
             inspec-report.json
             inspec-report.log
       
-      # ===================================================================
-      # REVERTED STEP: This now correctly uploads the required .json file.
-      # ===================================================================
       - name: Upload to DefectDojo
         if: always()
         run: |
