@@ -1,4 +1,4 @@
-name: 'Chef InSpec Compliance Scan'
+name: 'Chef InSpec Compliance'
 on:
   workflow_dispatch:
   
