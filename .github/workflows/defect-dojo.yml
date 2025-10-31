@@ -1,0 +1,65 @@
+name: 'Chef InSpec Compliance Scan'
+on:
+  workflow_dispatch:
+  
+jobs:
+  inspec-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout InSpec Profile from Repository
+        uses: actions/checkout@v4
+      
+      - name: Install Chef Habitat
+        run: |
+          curl https://raw.githubusercontent.com/habitat-sh/habitat/main/components/hab/install.sh | sudo bash
+        env:
+          HAB_LICENSE: accept-no-persist
+          
+      - name: Accept Habitat License
+        run: |
+          echo "yes" | sudo hab license accept
+          
+      - name: Install Chef InSpec
+        run: |
+          sudo hab pkg install chef/inspec --channel stable --binlink --force
+          inspec --version
+      
+      - name: Run InSpec Scan
+        env:
+          CHEF_LICENSE: accept-silent
+        run: |
+          inspec exec ./ssh-baseline \
+            --target local:// \
+            --reporter cli json:inspec-report.json
+        continue-on-error: true
+      
+      - name: Pretty-Print JSON Report
+        if: always()
+        run: |
+          jq . inspec-report.json > inspec-report-pretty.json
+          mv inspec-report-pretty.json inspec-report.json
+          echo "JSON report has been formatted."
+          
+      - name: Upload InSpec Report as Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inspec-scan-report
+          path: inspec-report.json
+      
+      # ===================================================================
+      # Upload Report to DefectDojo with auto_create_context
+      # ===================================================================
+      - name: Upload to DefectDojo
+        if: always()
+        run: |
+          curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
+            -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
+            -F "file=@inspec-report.json;type=application/json" \
+            -F "scan_type=Chef Inspect Log" \
+            -F "engagement_name=ssh-baseline-ci" \
+            -F "product_name=MyProduct" \
+            -F "auto_create_context=true"
+      
+      
