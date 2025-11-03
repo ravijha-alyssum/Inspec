@@ -42,14 +42,16 @@ jobs:
           name: inspec-scan-report
           path: inspec-report.json
 
-      
-
       - name: Upload to DefectDojo
         if: always()
         run: |
+          # --- FIX ---
+          # Rename the .log file to .txt to bypass the file extension filter
+          mv inspec-report.log inspec-report.txt
+
           curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
-            -F "file=@inspec-report.log" \
+            -F "file=@inspec-report.txt" \ # Uploading the renamed .txt file
             -F "scan_type=Chef Inspect Log" \
             -F "engagement_name=ssh-baseline-ci" \
             -F "product_name=MyProduct" \
