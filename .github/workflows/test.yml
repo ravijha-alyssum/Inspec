@@ -10,23 +10,21 @@ jobs:
       - name: Checkout InSpec Profile from Repository
         uses: actions/checkout@v4
 
-      # ... (steps for installing Habitat and InSpec remain the same) ...
-
       - name: Install Chef Habitat
         run: |
           curl https://raw.githubusercontent.com/habitat-sh/habitat/main/components/hab/install.sh | sudo bash
         env:
           HAB_LICENSE: accept-no-persist
-          
+
       - name: Accept Habitat License
         run: |
           echo "yes" | sudo hab license accept
-          
+
       - name: Install Chef InSpec
         run: |
           sudo hab pkg install chef/inspec --channel stable --binlink --force
           inspec --version
-      
+
       - name: Run InSpec Scan and Generate Both Reports
         env:
           CHEF_LICENSE: accept-silent
@@ -36,21 +34,36 @@ jobs:
             --reporter cli json:inspec-report.json \
             --no-distinct-exit | tee inspec-report.log
         continue-on-error: true
-      
+
       - name: Upload InSpec JSON Report as an Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: inspec-scan-report
-          path: inspec-report.json # This correctly stores only the JSON artifact
+          path: inspec-report.json
+
+      # --- NEW DEBUGGING STEP ---
+      # This step will test the network connection before trying to upload.
+      # If this fails, it confirms a firewall or network security issue.
+      - name: Check DefectDojo Connectivity
+        if: always()
+        run: |
+          # Extract host and port from the URL secret. This works for http://...
+          host=$(echo "${{ secrets.DEFECTDOJO_URL }}" | sed -e 's|http://||' -e 's|:.*||')
+          port=$(echo "${{ secrets.DEFECTDOJO_URL }}" | sed -e 's|.*:||' -e 's|/.*||')
+          
+          echo "Attempting to connect to host: $host on port: $port"
+          
+          # Test the TCP connection with a 10-second timeout
+          nc -zv -w 10 $host $port
 
       - name: Upload to DefectDojo
         if: always()
         run: |
           curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
-            -F "file=@inspec-report.log" \ # Corrected: Upload the log file
-            -F "scan_type=Chef Inspect Log" \ # Corrected: Matches the available parser
+            -F "file=@inspec-report.log" \
+            -F "scan_type=Chef Inspect Log" \
             -F "engagement_name=ssh-baseline-ci" \
             -F "product_name=MyProduct" \
             -F "auto_create_context=true"
