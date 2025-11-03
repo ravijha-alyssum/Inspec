@@ -1,15 +1,17 @@
 name: 'Chef InSpec Compliance Test'
 on:
   workflow_dispatch:
-  
+
 jobs:
   inspec-scan:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout InSpec Profile from Repository
         uses: actions/checkout@v4
-      
+
+      # ... (steps for installing Habitat and InSpec remain the same) ...
+
       - name: Install Chef Habitat
         run: |
           curl https://raw.githubusercontent.com/habitat-sh/habitat/main/components/hab/install.sh | sudo bash
@@ -35,24 +37,20 @@ jobs:
             --no-distinct-exit | tee inspec-report.log
         continue-on-error: true
       
-      # --- The "Pretty-Print JSON Report" step has been removed ---
-          
-      - name: Upload InSpec Reports as Artifacts
+      - name: Upload InSpec JSON Report as an Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: inspec-scan-reports
-          path: |
-            inspec-report.json
-            inspec-report.log
-      
+          name: inspec-scan-report
+          path: inspec-report.json # This correctly stores only the JSON artifact
+
       - name: Upload to DefectDojo
         if: always()
         run: |
           curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
-            -F "file=@inspec-report.json;type=application/json" \
-            -F "scan_type=Chef Inspect Log" \
+            -F "file=@inspec-report.log" \ # Corrected: Upload the log file
+            -F "scan_type=Chef Inspect Log" \ # Corrected: Matches the available parser
             -F "engagement_name=ssh-baseline-ci" \
             -F "product_name=MyProduct" \
             -F "auto_create_context=true"
