@@ -42,20 +42,7 @@ jobs:
           name: inspec-scan-report
           path: inspec-report.json
 
-      # --- NEW DEBUGGING STEP ---
-      # This step will test the network connection before trying to upload.
-      # If this fails, it confirms a firewall or network security issue.
-      - name: Check DefectDojo Connectivity
-        if: always()
-        run: |
-          # Extract host and port from the URL secret. This works for http://...
-          host=$(echo "${{ secrets.DEFECTDOJO_URL }}" | sed -e 's|http://||' -e 's|:.*||')
-          port=$(echo "${{ secrets.DEFECTDOJO_URL }}" | sed -e 's|.*:||' -e 's|/.*||')
-          
-          echo "Attempting to connect to host: $host on port: $port"
-          
-          # Test the TCP connection with a 10-second timeout
-          nc -zv -w 10 $host $port
+      
 
       - name: Upload to DefectDojo
         if: always()
