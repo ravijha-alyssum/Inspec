@@ -1,58 +1,66 @@
-name: 'Chef InSpec Compliance Test'
+name: 'Chef InSpec Compliance New'
 on:
   workflow_dispatch:
-
+  
 jobs:
   inspec-scan:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout InSpec Profile from Repository
         uses: actions/checkout@v4
-
+      
       - name: Install Chef Habitat
         run: |
           curl https://raw.githubusercontent.com/habitat-sh/habitat/main/components/hab/install.sh | sudo bash
         env:
           HAB_LICENSE: accept-no-persist
-
+          
       - name: Accept Habitat License
         run: |
           echo "yes" | sudo hab license accept
-
+          
       - name: Install Chef InSpec
         run: |
           sudo hab pkg install chef/inspec --channel stable --binlink --force
           inspec --version
-
-      - name: Run InSpec Scan and Generate Both Reports
+      
+      - name: Run InSpec Scan
         env:
           CHEF_LICENSE: accept-silent
         run: |
           inspec exec ./ssh-baseline \
             --target local:// \
-            --reporter cli json:inspec-report.json \
-            --no-distinct-exit | tee inspec-report.log
+            --reporter cli json:inspec-report.json
         continue-on-error: true
-
-      - name: Upload InSpec JSON Report as an Artifact
+      
+      - name: Pretty-Print JSON Report
+        if: always()
+        run: |
+          jq . inspec-report.json > inspec-report-pretty.json
+          mv inspec-report-pretty.json inspec-report.json
+          echo "JSON report has been formatted."
+          
+      - name: Upload InSpec Report as Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: inspec-scan-report
           path: inspec-report.json
-
+      
+      # ===================================================================
+      # CORRECTED: Upload JSON to DefectDojo using Generic parser
+      # ===================================================================
       - name: Upload to DefectDojo
         if: always()
         run: |
-          # --- FIX ---
-          # Rename the .log file to .txt to bypass the file extension filter
-          mv inspec-report.log inspec-report.txt
-
-          curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
+          curl -v -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
-            -F "file=@inspec-report.txt" \ # Uploading the renamed .txt file
-            -F "scan_type=Chef Inspect Log" \
+            -F "file=@inspec-report.json" \
+            -F "scan_type=Generic Findings Import" \
             -F "engagement_name=ssh-baseline-ci" \
             -F "product_name=MyProduct" \
-            -F "auto_create_context=true"
+            -F "auto_create_context=true" \
+            -F "scan_date=$(date +%Y-%m-%d)" \
+            -F "active=true" \
+            -F "verified=false"
