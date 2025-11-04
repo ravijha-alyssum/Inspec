@@ -51,7 +51,7 @@ jobs:
           curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
             -F "file=@inspec-report.json" \
-            -F "scan_type=Chef Inspec Log" \
+            -F "scan_type=Chef Inspect Log" \
             -F "engagement_name=ssh-baseline-ci" \
             -F "product_name=MyProduct" \
             -F "auto_create_context=true"
