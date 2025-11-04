@@ -1,7 +1,8 @@
 name: 'Chef InSpec Compliance New'
-on:
+
+on:  
   workflow_dispatch:
-  
+
 jobs:
   inspec-scan:
     runs-on: ubuntu-latest
@@ -9,7 +10,7 @@ jobs:
     steps:
       - name: Checkout InSpec Profile from Repository
         uses: actions/checkout@v4
-      
+        
       - name: Install Chef Habitat
         run: |
           curl https://raw.githubusercontent.com/habitat-sh/habitat/main/components/hab/install.sh | sudo bash
@@ -24,7 +25,7 @@ jobs:
         run: |
           sudo hab pkg install chef/inspec --channel stable --binlink --force
           inspec --version
-      
+        
       - name: Run InSpec Scan
         env:
           CHEF_LICENSE: accept-silent
@@ -33,34 +34,24 @@ jobs:
             --target local:// \
             --reporter cli json:inspec-report.json
         continue-on-error: true
-      
-      - name: Transform InSpec to DefectDojo Format
-        if: always()
-        run: |
-          # Use the enhanced transformation script from above
-          cat > transform-inspec.py << 'EOF'
-          # [Insert the complete transformation script from above]
-          EOF
-          python3 transform-inspec.py
-      
-      - name: Upload to DefectDojo
-        if: always()
-        run: |
-          curl -v -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
-            -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
-            -F "file=@defectdojo-findings.json" \
-            -F "scan_type=Generic Findings Import" \
-            -F "engagement_name=ssh-baseline-ci" \
-            -F "product_name=MyProduct" \
-            -F "scan_date=$(date +%Y-%m-%d)" \
-            -F "active=true" \
-            -F "verified=false"
-      
-      - name: Upload Reports as Artifacts
+        
+      - name: Upload InSpec Report as Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: inspec-scan-reports
-          path: |
-            inspec-report.json
-            defectdojo-findings.json
+          name: inspec-scan-report
+          path: inspec-report.json
+        
+      # ===================================================================
+      # Upload Report to DefectDojo with auto_create_context
+      # ===================================================================
+      - name: Upload to DefectDojo
+        if: always()
+        run: |
+          curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
+            -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
+            -F "file=@inspec-report.json" \
+            -F "scan_type=Chef Inspec" \
+            -F "engagement_name=ssh-baseline-ci" \
+            -F "product_name=MyProduct" \
+            -F "auto_create_context=true"
