@@ -34,33 +34,33 @@ jobs:
             --reporter cli json:inspec-report.json
         continue-on-error: true
       
-      - name: Pretty-Print JSON Report
+      - name: Transform InSpec to DefectDojo Format
         if: always()
         run: |
-          jq . inspec-report.json > inspec-report-pretty.json
-          mv inspec-report-pretty.json inspec-report.json
-          echo "JSON report has been formatted."
-          
-      - name: Upload InSpec Report as Artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: inspec-scan-report
-          path: inspec-report.json
+          # Use the enhanced transformation script from above
+          cat > transform-inspec.py << 'EOF'
+          # [Insert the complete transformation script from above]
+          EOF
+          python3 transform-inspec.py
       
-      # ===================================================================
-      # CORRECTED: Upload JSON to DefectDojo using Generic parser
-      # ===================================================================
       - name: Upload to DefectDojo
         if: always()
         run: |
           curl -v -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
-            -F "file=@inspec-report.json" \
+            -F "file=@defectdojo-findings.json" \
             -F "scan_type=Generic Findings Import" \
             -F "engagement_name=ssh-baseline-ci" \
             -F "product_name=MyProduct" \
-            -F "auto_create_context=true" \
             -F "scan_date=$(date +%Y-%m-%d)" \
             -F "active=true" \
             -F "verified=false"
+      
+      - name: Upload Reports as Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inspec-scan-reports
+          path: |
+            inspec-report.json
+            defectdojo-findings.json
